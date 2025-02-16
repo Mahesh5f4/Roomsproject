@@ -1,8 +1,21 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
-import { 
-  Box, Grid, Card, CardContent, CardActions, Typography, Button, Dialog, DialogTitle, DialogContent, DialogActions, Snackbar, CircularProgress, Skeleton 
+import {
+  Box,
+  Grid,
+  Card,
+  CardContent,
+  CardActions,
+  Typography,
+  Button,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Snackbar,
+  CircularProgress,
+  Skeleton,
 } from "@mui/material";
 import { motion } from "framer-motion";
 
@@ -51,7 +64,7 @@ const Homepage = () => {
 
   return (
     <Box sx={{ padding: 3, textAlign: "center" }}>
-      <Button variant="contained" color="primary" onClick={() => navigate("/add-block")} sx={{ mb: 3 }}>
+      <Button variant="contained" color="primary" onClick={() => navigate("/add-block")} sx={{ mb: 3, borderRadius: "20px" }}>
         Add Block
       </Button>
 
@@ -60,15 +73,20 @@ const Homepage = () => {
       </Typography>
 
       {!blocks.length ? (
-        <Typography variant="h5" color="textSecondary">No data found...</Typography>
+        <Typography variant="h5" color="textSecondary">
+          No data found...
+        </Typography>
       ) : (
         <Grid container spacing={3} justifyContent="center">
           {blocks.map((block, index) => (
             <Grid item xs={12} sm={6} md={4} key={index}>
               <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                <Card sx={{ maxWidth: 345, boxShadow: 4 }}>
-                  <CardContent onClick={() => navigate(`/get-data/${block.block_name}`, { state: { block } })}>
-                    <Skeleton variant="rectangular" height={140} />
+                <Card sx={{ maxWidth: 345, boxShadow: 4, borderRadius: "15px" }}>
+                  <CardContent
+                    onClick={() => navigate(`/get-data/${block.block_name}`, { state: { block } })}
+                    sx={{ cursor: "pointer", "&:hover": { backgroundColor: "#f0f0f0" } }}
+                  >
+                    <Skeleton variant="rectangular" height={140} animation="wave" />
                     <Typography variant="h5" mt={2} gutterBottom>
                       {block.block_name.toUpperCase()}
                     </Typography>
@@ -85,6 +103,7 @@ const Homepage = () => {
                         setSelectedBlock(block);
                         setOpenDialog(true);
                       }}
+                      sx={{ borderRadius: "20px" }}
                     >
                       Delete
                     </Button>
@@ -103,8 +122,12 @@ const Homepage = () => {
           Are you sure you want to delete <strong>{selectedBlock?.block_name}</strong>?
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setOpenDialog(false)} color="secondary">Cancel</Button>
-          <Button onClick={handleDeleteConfirm} color="error">Delete</Button>
+          <Button onClick={() => setOpenDialog(false)} color="secondary">
+            Cancel
+          </Button>
+          <Button onClick={handleDeleteConfirm} color="error">
+            Delete
+          </Button>
         </DialogActions>
       </Dialog>
 
@@ -114,6 +137,7 @@ const Homepage = () => {
         autoHideDuration={3000}
         onClose={() => setOpenSnackbar(false)}
         message={`Error: ${err}`}
+        anchorOrigin={{ vertical: "top", horizontal: "center" }}
       />
     </Box>
   );

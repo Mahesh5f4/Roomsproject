@@ -81,7 +81,7 @@ const BlockForm = () => {
               />
 
               <motion.div whileHover={{ scale: 1.05 }}>
-                <Button type="submit" variant="contained" fullWidth>
+                <Button type="submit" variant="contained" fullWidth sx={{ borderRadius: "20px" }}>
                   Add Block
                 </Button>
               </motion.div>

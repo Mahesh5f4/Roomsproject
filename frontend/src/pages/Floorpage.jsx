@@ -1,22 +1,38 @@
 import React, { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import axios from "axios";
-import { motion } from "framer-motion";
 import {
-  Grid,
+  Container,
+  Typography,
+  TextField,
+  Button,
   Card,
   CardContent,
-  Typography,
-  Button,
-  TextField,
-  Box,
-  Paper,
+  CardActions,
+  IconButton,
+  Snackbar,
+  Alert,
+  Fade,
   Dialog,
-  DialogTitle,
   DialogActions,
   DialogContent,
   DialogContentText,
+  DialogTitle,
+  Grid,
+  Paper,
+  Avatar,
+  Grow,
+  Zoom,
+  Slide,
 } from "@mui/material";
+import {
+  Delete as DeleteIcon,
+  Edit as EditIcon,
+  Add as AddIcon,
+  MeetingRoom as MeetingRoomIcon,
+} from "@mui/icons-material";
+import { Skeleton } from "@mui/lab";
+import "./FloorPage.css";
 
 const FloorPage = () => {
   const { state } = useLocation();
@@ -30,9 +46,12 @@ const FloorPage = () => {
   const [floorName, setFloorName] = useState("");
   const [roomdata, setRoomData] = useState([]);
   const [err, setErr] = useState("");
+  const [snackbarOpen, setSnackbarOpen] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState("");
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [alertDialogOpen, setAlertDialogOpen] = useState(false);
-  const [alertMessage, setAlertMessage] = useState("");
+  const [deleteRoomDialogOpen, setDeleteRoomDialogOpen] = useState(false);
+  const [roomToDelete, setRoomToDelete] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchBlockData = async () => {
@@ -40,8 +59,11 @@ const FloorPage = () => {
         const response = await axios.get(`http://localhost:5000/block/get-data/${block._id}`);
         setBlock(response.data);
         localStorage.setItem("block", JSON.stringify(response.data));
+        setLoading(false);
       } catch (error) {
         setErr("Failed to fetch updated block data");
+        console.error(error);
+        setLoading(false);
       }
     };
     if (block) fetchBlockData();
@@ -54,37 +76,33 @@ const FloorPage = () => {
       setFloorName("");
       const response = await axios.get(`http://localhost:5000/block/get-data/${block._id}`);
       setBlock(response.data);
+      setSnackbarMessage("Floor added successfully!");
+      setSnackbarOpen(true);
     } catch (error) {
       setErr(error.message);
+      console.error(error);
     }
   };
 
-  const confirmDeleteFloor = () => {
-    setDeleteDialogOpen(true);
-  };
-
-  const deleteFloor = async () => {
-    setDeleteDialogOpen(false);
+  const handleDeleteFloor = async () => {
     try {
       await axios.delete(`http://localhost:5000/block/${block._id}/floor/${floorid._id}`);
       const updatedData = await axios.get(`http://localhost:5000/block/get-data/${block._id}`);
 
       if (!updatedData.data) {
-        showAlert("Failed to delete the floor");
+        alert("Failed to delete the floor");
         return;
       }
 
       localStorage.setItem("block", JSON.stringify(updatedData.data));
-      showAlert("Floor has been deleted");
-      navigate(`/get-data/${updatedData.data.block_name}`, { state: { block: updatedData.data } });
+      setBlock(updatedData.data);
+      setSnackbarMessage("Floor deleted successfully!");
+      setSnackbarOpen(true);
+      setDeleteDialogOpen(false);
     } catch (error) {
-      showAlert("Something went wrong...");
+      alert("Something went wrong...");
+      console.error(error);
     }
-  };
-
-  const showAlert = (message) => {
-    setAlertMessage(message);
-    setAlertDialogOpen(true);
   };
 
   const displayRoom = (floor) => {
@@ -100,117 +118,177 @@ const FloorPage = () => {
     navigate(`/get-data/${block.block_name}/${floorid.floor_name}/modify/${room.room_name}`, { state: { Block: block, floor: floorid, Room: room } });
   };
 
-  const deleteRoom = async (room) => {
-    if (!room || !floorid || !block) {
-      showAlert("Missing data to delete the room.");
+  const handleDeleteRoom = async () => {
+    if (!roomToDelete || !floorid || !block) {
+      alert("Missing data to delete the room.");
       return;
     }
 
-    setAlertMessage(`Are you sure you want to delete the room: ${room.room_name}?`);
-    setAlertDialogOpen(true);
-
     try {
-      await axios.delete(`http://localhost:5000/block/${block._id}/floor/${floorid._id}/room/${room._id}`);
+      await axios.delete(`http://localhost:5000/block/${block._id}/floor/${floorid._id}/room/${roomToDelete._id}`);
       const updatedData = await axios.get(`http://localhost:5000/block/get-data/${block._id}`);
 
       if (!updatedData.data) {
-        showAlert("Failed to delete the room.");
+        alert("Failed to delete the room.");
         return;
       }
 
       localStorage.setItem("block", JSON.stringify(updatedData.data));
       setBlock(updatedData.data);
       setRoomData(updatedData.data.floors.find((f) => f._id === floorid._id)?.rooms || []);
-
-      showAlert(`Room '${room.room_name}' has been deleted.`);
+      setSnackbarMessage(`Room '${roomToDelete.room_name}' deleted successfully!`);
+      setSnackbarOpen(true);
+      setDeleteRoomDialogOpen(false);
     } catch (error) {
-      showAlert("Something went wrong");
+      alert("Something went wrong");
+      console.error(error);
     }
   };
 
-  return (
-    <Box sx={{ padding: 3 }}>
-      <Typography variant="h4" gutterBottom>
-        Floor Page for Block: {block?.block_name}
-      </Typography>
+  const backtohome = () => {
+    navigate(`/`);
+  };
 
-      <motion.div initial={{ y: -20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ duration: 0.5 }}>
-        <Paper sx={{ padding: 2, marginBottom: 3, boxShadow: 3 }}>
-          <TextField
-            label="Enter floor name"
-            variant="outlined"
-            fullWidth
-            value={floorName}
-            onChange={(e) => setFloorName(e.target.value)}
-          />
-          <Box sx={{ marginTop: 2, display: "flex", gap: 2 }}>
-            <Button variant="contained" color="primary" onClick={handleAddFloor}>
+  return (
+    <Container className="floor-form">
+      <Slide direction="up" in={!loading} mountOnEnter unmountOnExit>
+        <Paper elevation={3} style={{ padding: "20px", marginBottom: "20px", background: "#fff" }}>
+          <Typography variant="h4" gutterBottom>
+            Floor Page for Block: {block?.block_name}
+          </Typography>
+          {err && <Alert severity="error">{err}</Alert>}
+          <Button variant="contained" color="primary" onClick={backtohome} style={{ marginBottom: "20px", borderRadius: "20px" }}>
+            Back
+          </Button>
+
+          <form onSubmit={handleAddFloor} style={{ marginBottom: "20px" }}>
+            <TextField
+              label="Floor Name"
+              value={floorName}
+              onChange={(e) => setFloorName(e.target.value)}
+              fullWidth
+              margin="normal"
+            />
+            <Button type="submit" variant="contained" color="primary" startIcon={<AddIcon />} style={{ borderRadius: "20px" }}>
               Add Floor
             </Button>
             {floorid && (
-              <Button variant="contained" color="error" onClick={confirmDeleteFloor}>
+              <Button variant="contained" color="secondary" startIcon={<DeleteIcon />} onClick={() => setDeleteDialogOpen(true)} style={{ marginLeft: "10px", borderRadius: "20px" }}>
                 Delete Floor
               </Button>
             )}
-          </Box>
+          </form>
         </Paper>
-      </motion.div>
+      </Slide>
 
-      <Grid container spacing={2}>
-        {block?.floors?.map((floor, index) => (
-          <Grid item xs={12} sm={6} md={4} key={index}>
-            <motion.div whileHover={{ scale: 1.05 }}>
-              <Card sx={{ padding: 2, cursor: "pointer" }} onClick={() => displayRoom(floor)}>
-                <CardContent>
-                  <Typography variant="h6">{floor.floor_name}</Typography>
-                  <Typography variant="body2">{floor.rooms.length} Rooms</Typography>
-                </CardContent>
-              </Card>
-            </motion.div>
-          </Grid>
-        ))}
+      <Grid container spacing={3}>
+        {loading ? (
+          Array.from(new Array(3)).map((_, index) => (
+            <Grid item xs={12} sm={6} md={4} key={index}>
+              <Skeleton variant="rectangular" width="100%" height={150} />
+            </Grid>
+          ))
+        ) : (
+          block?.floors?.map((floor, index) => (
+            <Grid item xs={12} sm={6} md={4} key={index}>
+              <Grow in timeout={500}>
+                <Card className="floor-text" onClick={() => displayRoom(floor)} style={{ cursor: "pointer", background: "#fff", color: "#000" }}>
+                  <CardContent>
+                    <Typography variant="h5">{floor.floor_name}</Typography>
+                    <Typography variant="body2">{floor.rooms.length} Rooms</Typography>
+                  </CardContent>
+                </Card>
+              </Grow>
+            </Grid>
+          ))
+        )}
       </Grid>
 
       {floorid && (
-        <Box sx={{ marginTop: 4 }}>
-          <Button variant="contained" color="success" onClick={addRooms}>
-            Add Room to {floorid.floor_name.toUpperCase()}
-          </Button>
-          <Typography variant="h5" sx={{ marginTop: 2 }}>
-            Rooms:
-          </Typography>
-          <Grid container spacing={2}>
-            {roomdata.map((room, index) => (
-              <Grid item xs={12} sm={6} md={4} key={index}>
-                <Card
-                  sx={{
-                    padding: 2,
-                    backgroundColor: room.occupied ? "#ffcccb" : "#d4edda",
-                    transition: "background-color 0.3s ease",
-                  }}
-                >
-                  <CardContent>
-                  <Typography variant="h6">{room.room_name}</Typography>
-<Typography variant="body2">
-  {room.room_type} | Capacity: {room.room_capacity}
-</Typography>
-<Typography color={room.occupied ? "error" : "success"}>
-  {room.occupied ? "Occupied" : "Empty"}
-</Typography>
-                    <Button variant="contained" color="info" onClick={() => modifyRoom(room)}>
-                      Modify
-                    </Button>
-                    <Button variant="contained" color="error" onClick={() => deleteRoom(room)}>
-                      Delete
-                    </Button>
-                  </CardContent>
-                </Card>
+        <Zoom in style={{ transitionDelay: "500ms" }}>
+          <Paper elevation={3} style={{ padding: "20px", marginTop: "20px", background: "#fff" }}>
+            <Button variant="contained" color="primary" onClick={addRooms} style={{ marginBottom: "20px", borderRadius: "20px" }}>
+              Add Room to {floorid.floor_name.toUpperCase()}
+            </Button>
+            <Typography variant="h5" gutterBottom>
+              Rooms:
+            </Typography>
+            {roomdata.length > 0 ? (
+              <Grid container spacing={3}>
+                {roomdata.map((room, index) => (
+                  <Grid item xs={12} sm={6} md={4} key={index}>
+                    <Grow in timeout={500}>
+                      <Card className={`room ${room.occupied ? "occupied-room" : ""}`} style={{ padding: "20px", borderRadius: "10px", boxShadow: "0 4px 8px rgba(0,0,0,0.1)", background: room.occupied ? "#FFCCCC" : "#CCFFCC" }}>
+                        <CardContent>
+                          <Avatar style={{ backgroundColor: room.occupied ? "#FF9999" : "#99FF99", marginBottom: "10px" }}>
+                            <MeetingRoomIcon />
+                          </Avatar>
+                          <Typography variant="h6" style={{ marginBottom: "10px", fontWeight: "bold" }}>{room.room_name}</Typography>
+                          <Typography variant="body2" style={{ marginBottom: "5px", fontWeight: "bold" }}>Room ID: {room.room_id}</Typography>
+                          <Typography variant="body2" style={{ marginBottom: "5px", fontWeight: "bold" }}>Type: {room.room_type}</Typography>
+                          <Typography variant="body2" style={{ marginBottom: "5px", fontWeight: "bold" }}>Capacity: {room.room_capacity}</Typography>
+                          <Typography variant="body2" style={{ fontWeight: "bold" }}>Status: {room.occupied ? "Occupied" : "Empty"}</Typography>
+                        </CardContent>
+                        <CardActions>
+                          <Button variant="contained" color="primary" onClick={(e) => { e.stopPropagation(); modifyRoom(room); }} style={{ borderRadius: "20px", marginRight: "10px" }}>
+                            Modify
+                          </Button>
+                          <Button variant="contained" color="secondary" onClick={(e) => { e.stopPropagation(); setRoomToDelete(room); setDeleteRoomDialogOpen(true); }} style={{ borderRadius: "20px" }}>
+                            Delete
+                          </Button>
+                        </CardActions>
+                      </Card>
+                    </Grow>
+                  </Grid>
+                ))}
               </Grid>
-            ))}
-          </Grid>
-        </Box>
+            ) : (
+              <Typography variant="body1">No rooms available for this floor.</Typography>
+            )}
+          </Paper>
+        </Zoom>
       )}
-    </Box>
+
+      <Snackbar open={snackbarOpen} autoHideDuration={3000} onClose={() => setSnackbarOpen(false)}>
+        <Alert onClose={() => setSnackbarOpen(false)} severity="success">
+          {snackbarMessage}
+        </Alert>
+      </Snackbar>
+
+      <Dialog open={deleteDialogOpen} onClose={() => setDeleteDialogOpen(false)}>
+        <DialogTitle>Delete Floor</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Are you sure you want to delete this floor? This action cannot be undone.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeleteDialogOpen(false)} color="primary">
+            Cancel
+          </Button>
+          <Button onClick={handleDeleteFloor} color="secondary" autoFocus>
+            Delete
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={deleteRoomDialogOpen} onClose={() => setDeleteRoomDialogOpen(false)}>
+        <DialogTitle>Delete Room</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Are you sure you want to delete the room: {roomToDelete?.room_name}? This action cannot be undone.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeleteRoomDialogOpen(false)} color="primary">
+            Cancel
+          </Button>
+          <Button onClick={handleDeleteRoom} color="secondary" autoFocus>
+            Delete
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </Container>
   );
 };
 
